@@ -62,6 +62,36 @@
           "label": "|]",
           "body": "⟧",
           "description": "|]"
+        },
+        {
+          "label": "[[",
+          "body": "⟦",
+          "description": "[["
+        },
+        {
+          "label": "]]",
+          "body": "⟧",
+          "description": "]]"
+        },
+        {
+          "label": "{{",
+          "body": " ⦃",
+          "description": "{{"
+        },
+        {
+          "label": "}}",
+          "body": "⦄",
+          "description": "}}"
+        },
+        {
+          "label": "{|",
+          "body": " ⦃",
+          "description": "{{"
+        },
+        {
+          "label": "|}",
+          "body": "⦄",
+          "description": "}}"
         }
       ]
     }

@@ -33,7 +33,7 @@ record PartialMagmaStr (A : Type 𝓁) : Type (𝓁-suc 𝓁) where
     isPartialMagma : IsPartialMagma _⋅_↓ _⋅_
 
   infixl 7 _⋅_
-  infixl 7 _⋅_↓
+  infix 7 _⋅_↓
 
 PartialMagma : Type (𝓁-suc 𝓁)
 PartialMagma = TypeWithStr _ PartialMagmaStr
@@ -59,23 +59,27 @@ cong₃ f p q r i = f (p i) (q i) (r i)
 
 module TermSyntax {𝓁} (M : PartialMagma {𝓁}) where
   open PartialMagmaStr (snd M)
-  open IsPartialMagma isPartialMagma using (↓-isProp)
+  open IsPartialMagma isPartialMagma using (↓-isProp ; carrier-isSet)
   data ClosedTerm : Set 𝓁 where
     ⟦_⟧ : fst M → ClosedTerm
     _⊙_ : ClosedTerm → ClosedTerm → ClosedTerm
 
   data _⇓_ : ClosedTerm → fst M →  Type 𝓁 where
-    lit-denotes : ∀ {t} → ⟦ t ⟧ ⇓ t
-    ⋅-denotes : ∀ {x y t u} → x ⇓ t → y ⇓ u → {{_ : t ⋅ u ↓}} → (x ⊙ y) ⇓ (t ⋅ u)
-  
+    ⟦⟧⇓ : ∀ {t} → ⟦ t ⟧ ⇓ t
+    ⊙⇓ : ∀ {x y t u} → x ⇓ t → y ⇓ u → {{_ : t ⋅ u ↓}} → (x ⊙ y) ⇓ (t ⋅ u)
+
+  infixl 7 _⊙_
+  infix 6 _⇓ _⇓_
+
+
   _⇓ : ClosedTerm → Type 𝓁
   x ⇓ = Σ _ (x ⇓_)
 
   ⇓-injʳ : ∀ {x t u} → x ⇓ t → x ⇓ u → t ≡ u
-  ⇓-injʳ {.(⟦ t ⟧)} {t} {.t} lit-denotes lit-denotes = refl
+  ⇓-injʳ {.(⟦ t ⟧)} {t} {.t} ⟦⟧⇓ ⟦⟧⇓ = refl
   ⇓-injʳ {.(x ⊙ y)} {.(t ⋅ u)} {.(t′ ⋅ u′)} 
-    (⋅-denotes {x} {y} {t} {u} x⇓t y⇓u {{t⋅u↓}}) 
-    (⋅-denotes {.x} {.y} {t′} {u′} x⇓t′ y⇓u′ {{t′⋅u′↓}}) = 
+    (⊙⇓ {x} {y} {t} {u} x⇓t y⇓u {{t⋅u↓}}) 
+    (⊙⇓ {.x} {.y} {t′} {u′} x⇓t′ y⇓u′ {{t′⋅u′↓}}) = 
       _⋅_ t u {{t⋅u↓}}
     ≡⟨ cong₃
         (λ x y z → (x ⋅ y) ⦃ z ⦄) 
@@ -89,15 +93,65 @@ module TermSyntax {𝓁} (M : PartialMagma {𝓁}) where
     where
       cong-↓ = cong₂ _⋅_↓ (⇓-injʳ x⇓t x⇓t′) (⇓-injʳ y⇓u y⇓u′)
 
-  -- ⇓-isProp₂ : ∀{x t} → isProp (x ⇓ t)
-  -- ⇓-isProp₂ {⟦ x ⟧} {x} (lit-denotes {x}) q = {! q !}
-  -- ⇓-isProp₂
-  --   (⋅-denotes {x} {y} {t} {u} p p₁ {{pf}}) 
-  --   q = {! q !}
+  private
+    ⇓-isProp-aux-prop
+      : ∀ {x t} → (p : x ⇓ t) → (q : x ⇓ t)
+      → ⇓-injʳ p q ≡ refl
+    ⇓-isProp-aux-prop {x} {t} p q =
+      carrier-isSet t t (⇓-injʳ p q) refl
 
-  -- ⇓-isProp₁ : ∀{x} → isProp (x ⇓)
-  -- ⇓-isProp₁ {x} (t , x⇓t) (u , x⇓u) = refl
-  --   where t≡u = ⇓-injʳ x⇓t x⇓u
+    ⇓-isProp-aux₀
+      : ∀ {x t u} → (p : x ⇓ t) → (q : x ⇓ u)
+      → transport (λ i → x ⇓ ⇓-injʳ p q i) p ≡ q
+    ⇓-isProp-aux₀ {.(⟦ t ⟧)} {t} {.t} (⟦⟧⇓ {t}) (⟦⟧⇓ {t}) =
+        transport (λ i → ⟦ t ⟧ ⇓ ⇓-injʳ (⟦⟧⇓ {t}) (⟦⟧⇓ {t}) i) (⟦⟧⇓ {t})
+      ≡⟨ cong 
+          (λ pf → transport (λ i → ⟦ t ⟧ ⇓ pf i) (⟦⟧⇓ {t})) 
+          (⇓-isProp-aux-prop (⟦⟧⇓ {t}) (⟦⟧⇓ {t}))
+        ⟩
+        transport refl (⟦⟧⇓ {t})
+      ≡⟨ transportRefl ⟦⟧⇓ ⟩
+        ⟦⟧⇓ {t}
+      ∎
+    ⇓-isProp-aux₀ {(t ⊙ u)} {.(_ ⋅ _)} {.(_ ⋅ _)} 
+      (⊙⇓ t⇓l u⇓r ⦃ l⋅r↓ ⦄) (⊙⇓ t⇓l′ u⇓r′ ⦃ l′⋅r′↓ ⦄) =
+            transport (λ i → (t ⊙ u) ⇓ ⇓-injʳ p q i)
+              (⊙⇓ t⇓l u⇓r ⦃ l⋅r↓ ⦄)
+        ≡⟨ {!   !} ⟩
+            ⊙⇓ t⇓l′ u⇓r′ ⦃ l′⋅r′↓ ⦄
+        ∎
+        where
+          -- transf t⇓ u⇓ ↓ = ⊙⇓ t⇓ u⇓ ⦃ ↓ ⦄
+          p = ⊙⇓ t⇓l u⇓r ⦃ l⋅r↓ ⦄
+          q = ⊙⇓ t⇓l′ u⇓r′ ⦃ l′⋅r′↓ ⦄
+          t⇓l≡t⇓l′ = ⇓-isProp-aux₀ t⇓l t⇓l′
+          t⇓r≡t⇓r′ = ⇓-isProp-aux₀ u⇓r u⇓r′
+    
+  ⇓-isProp₂
+    : ∀ {x t} → (p : x ⇓ t) → (q : x ⇓ t)
+    → p ≡ q
+  ⇓-isProp₂ {x} {t} p q =
+      p
+    ≡⟨ sym (transportRefl p) ⟩
+      transport (λ i → x ⇓ refl {x = t} i) p
+    ≡⟨ cong (λ t≡t → transport (λ i →  x ⇓ t≡t i) p) (sym (⇓-isProp-aux-prop p q)) ⟩
+      transport (λ i → x ⇓ ⇓-injʳ p q i) p
+    ≡⟨ ⇓-isProp-aux₀ p q ⟩
+      q
+    ∎
+      
+
+  ⇓-isProp₁ : ∀{x} → isProp (x ⇓)
+  ⇓-isProp₁ {x} (t , x⇓t) (u , x⇓u) =
+      (t , x⇓t)
+    ≡⟨ cong₂ {C = λ  _ _ → x ⇓} _,_ t≡u (transport-filler x⇓t≡u x⇓t) ⟩
+      (u , transport x⇓t≡u x⇓t)
+    ≡⟨ cong {B = λ _ → x ⇓} (u ,_) (⇓-isProp₂ _ x⇓u) ⟩
+      (u , x⇓u)
+    ∎
+    where
+      t≡u = ⇓-injʳ x⇓t x⇓u
+      x⇓t≡u = cong (x ⇓_) t≡u
 
 record IsPCA {A : Type 𝓁} (_⋅_↓ : A → A → Type 𝓁) (_⋅_ : (x y : A) → {{_ : x ⋅ y ↓}} → A) (k : A) (s : A) : Type 𝓁 where
   constructor ispca
