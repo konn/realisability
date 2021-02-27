@@ -109,3 +109,5 @@ S-is-βnf = λ{ (y , ())}
 
 K-is-βnf : is-βnf K
 K-is-βnf = λ{ (y , ())}
+
+

@@ -1,6 +1,6 @@
 {-# OPTIONS --cubical #-}
 module PCA where
-open import Level renaming (suc to 𝓁-suc)
+open import Level renaming (suc to 𝓁-suc ; _⊔_ to _⊔𝓁_)
 open import Cubical.Foundations.Prelude
 open import Cubical.Foundations.HLevels
 open import Cubical.Data.Maybe
@@ -8,6 +8,9 @@ open import Cubical.Data.Maybe.Properties
 open import Cubical.Foundations.Structure
 open import Cubical.Relation.Nullary
 open import Cubical.Data.Unit
+open import Cubical.Data.Sum
+open import Cubical.Data.Prod
+open import Cubical.Foundations.Logic
 open import Cubical.Data.Nat
 open import Cubical.Data.Empty renaming (elim to ⊥-elim)
 
@@ -16,11 +19,11 @@ private
     𝓁 : Level
     c : Level
 
-record IsPartialMagma {A : Type 𝓁} (_⋅_↓ : A → A → Set c)  (_⋅_ : ∀ (x y : A) → {{_ : x ⋅ y ↓ }} → A) : Type (c ⊔ 𝓁) where
+record IsPartialMagma {A : Type 𝓁} (_⋅_↓ : A → A → Set c)  (_⋅_ : ∀ (x y : A) → {{_ : x ⋅ y ↓ }} → A) : Type (c ⊔𝓁 𝓁) where
   constructor ispartialmagma
   field
-    is-propsition : ∀ {x y} → isProp (x ⋅ y ↓)
-    is-set : isSet A
+    ↓-isProp : ∀ {x y} → isProp (x ⋅ y ↓)
+    carrier-isSet : isSet A
 
 record PartialMagmaStr (A : Type 𝓁) : Type (𝓁-suc 𝓁) where
   constructor partialmagmastr
@@ -42,22 +45,49 @@ partialmagma :
     (h : IsPartialMagma _⋅_↓ _⋅_) → PartialMagma
 partialmagma A _⋅_↓ _⋅_ h = A , partialmagmastr _⋅_↓ _⋅_ h
 
+cong₃ : ∀ {A : Type 𝓁} {B : A → Type 𝓁} {C : (a : A) → B a → Type 𝓁 }
+        {D : (a : A) → (b : B a) → (c : C a b) → Type 𝓁} →
+        (f : (a : A) → (b : B a) → (c : C a b) → D a b c) →
+        {x y : A} → 
+        (p : x ≡ y) →
+        {u : B x} {v : B y}
+        (q : PathP (λ i → B (p i)) u v) →
+        {α : C x u} {β : C y v} → 
+        (r : PathP (λ i → C (p i) (q i)) α β) →
+        PathP (λ i → D (p i) (q i) (r i)) (f x u α) (f y v β)
+cong₃ f p q r i = f (p i) (q i) (r i)
 
-{-
-record IsPCA {A : Type 𝓁} (_⋅?_ : A → A → Maybe A) (k : A) (s : A) : Type 𝓁 where
+record IsPCA {A : Type 𝓁} (_⋅_↓ : A → A → Type 𝓁) (_⋅_ : (x y : A) → {{_ : x ⋅ y ↓}} → A) (k : A) (s : A) : Type 𝓁 where
   constructor ispca
   field
-    isPartialMagma : IsPartialMagma _⋅?_
-
-  open PartialMagmaStr (partialmagmastr _⋅?_ isPartialMagma) hiding (_⋅?_)
+    isPartialMagma : IsPartialMagma _⋅_↓ _⋅_
 
   field
-    {{k-total}} : ∀ {a} → k ⋅ a ↓
-    k-const : ∀ {a b} → (k ⋅ a) ⋅? b ≡ just a
+    {{k-total₁}} : ∀ {a} → k ⋅ a ↓
+    {{k-total₂}} : ∀ {a b} → (k ⋅ a) ⋅ b ↓
+    k-const : ∀ {a b} → (k ⋅ a) ⋅ b ≡ a
     {{s-total₁}} : ∀ {f} → s ⋅ f ↓
     {{s-total₂}} : ∀ {f g} → (s ⋅ f) ⋅ g ↓
-    s-starling : ∀ {f g x} → (s ⋅ f ⋅ g) ⋅? x ≡ (f ⋅? x) ⊙ (g ⋅? x)
-  
+    s-forward : ∀ {f g x} → {{_ : ((s ⋅ f) ⋅ g) ⋅ x ↓ }} → 
+      Σ ((f ⋅ x ↓) × (g ⋅ x ↓)) 
+          λ { (fx↓ , gx↓) →
+                  (λ {{_ : f ⋅ x ↓}} {{_ : g ⋅ x ↓}}
+                    → Σ ((f ⋅ x) ⋅ (g ⋅ x) ↓)
+                      (λ fx[gx]↓ → 
+                        (λ {{_ : (f ⋅ x) ⋅ (g ⋅ x) ↓}} → 
+                          ((s ⋅ f) ⋅ g) ⋅ x  ≡  (f ⋅ x) ⋅ (g ⋅ x)
+                        ) {{fx[gx]↓}}
+                      )
+                  )
+                {{fx↓}} {{gx↓}}
+            } 
+    s-backward : ∀ {f g x} {{_ : f ⋅ x ↓}} {{_ : g ⋅ x ↓}} 
+      {{_ : (f ⋅ x) ⋅ (g ⋅ x) ↓}} → 
+      Σ (((s ⋅ f) ⋅ g) ⋅ x ↓)
+        λ sfgx↓ →
+          (λ {{_ : ((s ⋅ f) ⋅ g) ⋅ x ↓}} → ((s ⋅ f) ⋅ g) ⋅ x ≡ (f ⋅ x) ⋅ (g ⋅ x))
+          {{sfgx↓}}
+{-
 
 record PCAStr (A : Type 𝓁) : Type (𝓁-suc 𝓁) where
   constructor pcastr
