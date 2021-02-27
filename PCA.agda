@@ -57,6 +57,48 @@ cong₃ : ∀ {A : Type 𝓁} {B : A → Type 𝓁} {C : (a : A) → B a → Typ
         PathP (λ i → D (p i) (q i) (r i)) (f x u α) (f y v β)
 cong₃ f p q r i = f (p i) (q i) (r i)
 
+module TermSyntax {𝓁} (M : PartialMagma {𝓁}) where
+  open PartialMagmaStr (snd M)
+  open IsPartialMagma isPartialMagma using (↓-isProp)
+  data ClosedTerm : Set 𝓁 where
+    ⟦_⟧ : fst M → ClosedTerm
+    _⊙_ : ClosedTerm → ClosedTerm → ClosedTerm
+
+  data _⇓_ : ClosedTerm → fst M →  Type 𝓁 where
+    lit-denotes : ∀ {t} → ⟦ t ⟧ ⇓ t
+    ⋅-denotes : ∀ {x y t u} → x ⇓ t → y ⇓ u → {{_ : t ⋅ u ↓}} → (x ⊙ y) ⇓ (t ⋅ u)
+  
+  _⇓ : ClosedTerm → Type 𝓁
+  x ⇓ = Σ _ (x ⇓_)
+
+  ⇓-injʳ : ∀ {x t u} → x ⇓ t → x ⇓ u → t ≡ u
+  ⇓-injʳ {.(⟦ t ⟧)} {t} {.t} lit-denotes lit-denotes = refl
+  ⇓-injʳ {.(x ⊙ y)} {.(t ⋅ u)} {.(t′ ⋅ u′)} 
+    (⋅-denotes {x} {y} {t} {u} x⇓t y⇓u {{t⋅u↓}}) 
+    (⋅-denotes {.x} {.y} {t′} {u′} x⇓t′ y⇓u′ {{t′⋅u′↓}}) = 
+      _⋅_ t u {{t⋅u↓}}
+    ≡⟨ cong₃
+        (λ x y z → (x ⋅ y) ⦃ z ⦄) 
+        (⇓-injʳ x⇓t x⇓t′) (⇓-injʳ y⇓u y⇓u′) 
+        (transport-filler cong-↓ t⋅u↓)
+    ⟩
+      _⋅_ t′ u′ {{transport cong-↓ t⋅u↓}}
+    ≡⟨ cong (λ z → _⋅_ t′ u′ {{z}}) (↓-isProp _ _)  ⟩
+      _⋅_ t′ u′ {{t′⋅u′↓}}
+    ∎
+    where
+      cong-↓ = cong₂ _⋅_↓ (⇓-injʳ x⇓t x⇓t′) (⇓-injʳ y⇓u y⇓u′)
+
+  -- ⇓-isProp₂ : ∀{x t} → isProp (x ⇓ t)
+  -- ⇓-isProp₂ {⟦ x ⟧} {x} (lit-denotes {x}) q = {! q !}
+  -- ⇓-isProp₂
+  --   (⋅-denotes {x} {y} {t} {u} p p₁ {{pf}}) 
+  --   q = {! q !}
+
+  -- ⇓-isProp₁ : ∀{x} → isProp (x ⇓)
+  -- ⇓-isProp₁ {x} (t , x⇓t) (u , x⇓u) = refl
+  --   where t≡u = ⇓-injʳ x⇓t x⇓u
+
 record IsPCA {A : Type 𝓁} (_⋅_↓ : A → A → Type 𝓁) (_⋅_ : (x y : A) → {{_ : x ⋅ y ↓}} → A) (k : A) (s : A) : Type 𝓁 where
   constructor ispca
   field
