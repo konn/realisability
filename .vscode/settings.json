@@ -1,0 +1,64 @@
+{
+  "generic-input-methods.input-methods": [
+
+
+    {
+      "name": "Unicode Math",
+      "commandName": "text.math",
+      "languages": [
+        "markdown", "agda"
+      ],
+      "triggers": [
+        "\\"
+      ],
+      "dictionary": [
+        "defaults/math.json",
+        {
+          "label": "to",
+          "body": "→",
+          "description": "->"
+        },
+        {
+          "label": "^r",
+          "body": "ʳ",
+          "description": "upper r"
+        },
+        {
+          "label": "^l",
+          "body": "ˡ",
+          "description": "upper l"
+        },
+        {
+          "label": "<",
+          "body": "⟨",
+          "description": "langle"
+        },
+        {
+          "label": ">",
+          "body": "⟩",
+          "description": "rangle"
+        },
+        {
+          "label": "==",
+          "body": "≡",
+          "description": "≡"
+        },
+        {
+          "label": "?=",
+          "body": "≟",
+          "description": "≟"
+        },
+        {
+          "label": "~>",
+          "body": "↝",
+          "description": "~>"
+        }
+      ]
+    }
+  ],
+  "agdaMode.libraryPath": "$HOME/.agda",
+  "agda-interactive.program.libraries": [
+    "standard-library",
+    "cubical"
+  ]
+}
