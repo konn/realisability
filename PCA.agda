@@ -102,46 +102,40 @@ module TermSyntax {𝓁} (M : PartialMagma {𝓁}) where
 
     ⇓-isProp-aux₀
       : ∀ {x t u} → (p : x ⇓ t) → (q : x ⇓ u)
-      → transport (cong (x ⇓_) (⇓-injʳ p q)) p ≡ q
+      → subst (x ⇓_) (⇓-injʳ p q) p ≡ q
     ⇓-isProp-aux₀ {.(⟦ t ⟧)} {t} {.t} (⟦⟧⇓ {t}) (⟦⟧⇓ {t}) =
-        transport (λ i → ⟦ t ⟧ ⇓ ⇓-injʳ (⟦⟧⇓ {t}) (⟦⟧⇓ {t}) i) (⟦⟧⇓ {t})
+        subst (⟦ t ⟧ ⇓_) (⇓-injʳ (⟦⟧⇓ {t}) (⟦⟧⇓ {t})) (⟦⟧⇓ {t})
       ≡⟨ cong 
-          (λ pf → transport (cong (⟦ t ⟧ ⇓_) pf) (⟦⟧⇓ {t})) 
+          (λ pf → subst (⟦ t ⟧ ⇓_) pf (⟦⟧⇓ {t})) 
           (⇓-isProp-aux-prop (⟦⟧⇓ {t}) (⟦⟧⇓ {t}))
         ⟩
-        transport refl (⟦⟧⇓ {t})
-      ≡⟨ transportRefl ⟦⟧⇓ ⟩
+        subst (⟦ t ⟧ ⇓_) refl (⟦⟧⇓ {t})
+      ≡⟨ substRefl {B = ⟦ t ⟧ ⇓_} ⟦⟧⇓ ⟩
         ⟦⟧⇓ {t}
       ∎
     ⇓-isProp-aux₀ {(t ⊙ u)} {.(l ⋅ r)} {.(_ ⋅ _)} 
       (⊙⇓ {t} {u} {l} {r} t⇓l u⇓r ⦃ l⋅r↓ ⦄)
       (⊙⇓ {t} {u} {l′} {r′} t⇓l′ u⇓r′ ⦃ l′⋅r′↓ ⦄) =
-          transport 
-            (cong ((t ⊙ u) ⇓_) (⇓-injʳ p q))
-            p
+          subst ((t ⊙ u) ⇓_) (⇓-injʳ p q) p
         ≡⟨ cong₃
             (λ _ x y →  
-              transport 
-                  (cong (t ⊙ u ⇓_) (⇓-injʳ ((⊙⇓ x  u⇓r ⦃ y ⦄)) q))  
-                  (⊙⇓ x  u⇓r ⦃ y ⦄)
+              subst (t ⊙ u ⇓_)
+                (⇓-injʳ ((⊙⇓ x  u⇓r ⦃ y ⦄)) q)
+                (⊙⇓ x  u⇓r ⦃ y ⦄)
             ) 
             l≡l′ (transport-filler (cong (t ⇓_) l≡l′) t⇓l) 
                 (transport-filler (cong (_⋅ r ↓) l≡l′) l⋅r↓)
           ⟩
-          transport 
-            (cong ((t ⊙ u) ⇓_) (⇓-injʳ pl′ q))
-            pl′
+          subst (t ⊙ u ⇓_) (⇓-injʳ pl′ q) pl′
         ≡⟨ cong₃
               (λ _ x₁ y →
-                transport (cong ((t ⊙ u) ⇓_) (⇓-injʳ (⊙⇓ t⇓trans-l x₁ ⦃ y ⦄) q))
+                subst (t ⊙ u ⇓_) (⇓-injʳ (⊙⇓ t⇓trans-l x₁ ⦃ y ⦄) q)
                 (⊙⇓ t⇓trans-l x₁ ⦃ y ⦄))
                 r≡r′
                 (transport-filler (cong (u ⇓_) r≡r′) u⇓r)
                 (transport-filler (cong (l′ ⋅_↓) r≡r′) trans-l⋅r↓)
           ⟩
-        transport 
-            (cong ((t ⊙ u) ⇓_) (⇓-injʳ ptrans q))
-            ptrans
+          subst (t ⊙ u ⇓_) (⇓-injʳ ptrans q) ptrans
         ≡⟨ cong₃
             (λ x y z → transport 
                 (cong ((t ⊙ u) ⇓_) (⇓-injʳ (⊙⇓ x y ⦃ z ⦄) q))
@@ -151,14 +145,13 @@ module TermSyntax {𝓁} (M : PartialMagma {𝓁}) where
             (u⇓r≡u⇓r′)
             (↓-isProp _ l′⋅r′↓)
           ⟩
-          transport (cong (t ⊙ u ⇓_) (⇓-injʳ q q))
-            (⊙⇓ t⇓l′ u⇓r′ ⦃ l′⋅r′↓ ⦄)
-        ≡⟨ cong (λ pf → transport (cong ((t ⊙ u) ⇓_) pf) q) 
+          subst (t ⊙ u ⇓_) (⇓-injʳ q q) (⊙⇓ t⇓l′ u⇓r′ ⦃ l′⋅r′↓ ⦄)
+        ≡⟨ cong (λ pf → subst (t ⊙ u ⇓_) pf q) 
             (carrier-isSet (l′ ⋅ r′) (l′ ⋅ r′) (⇓-injʳ q q) refl)
           ⟩
-          transport (cong (t ⊙ u ⇓_) refl)
+          subst (t ⊙ u ⇓_) refl
             (⊙⇓ t⇓l′ u⇓r′ ⦃ l′⋅r′↓ ⦄)
-        ≡⟨ transportRefl _ ⟩
+        ≡⟨ substRefl { B = t ⊙ u ⇓_ } _ ⟩
             ⊙⇓ t⇓l′ u⇓r′ ⦃ l′⋅r′↓ ⦄
         ∎
         where
@@ -187,10 +180,10 @@ module TermSyntax {𝓁} (M : PartialMagma {𝓁}) where
     → p ≡ q
   ⇓-isProp₂ {x} {t} p q =
       p
-    ≡⟨ sym (transportRefl p) ⟩
-      transport (λ i → x ⇓ refl {x = t} i) p
-    ≡⟨ cong (λ t≡t → transport (λ i →  x ⇓ t≡t i) p) (sym (⇓-isProp-aux-prop p q)) ⟩
-      transport (λ i → x ⇓ ⇓-injʳ p q i) p
+    ≡⟨ sym (substRefl { B = x ⇓_} p) ⟩
+      subst (x ⇓_) (refl {x = t}) p
+    ≡⟨ cong (λ t≡t → subst (x ⇓_) t≡t p) (sym (⇓-isProp-aux-prop p q)) ⟩
+      subst (x ⇓_) (⇓-injʳ p q) p
     ≡⟨ ⇓-isProp-aux₀ p q ⟩
       q
     ∎
