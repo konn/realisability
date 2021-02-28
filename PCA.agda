@@ -10,7 +10,7 @@ open import Cubical.Relation.Nullary
 open import Cubical.Data.Unit
 open import Cubical.Data.Sum
 open import Cubical.Data.Prod
-open import Cubical.Foundations.Logic
+open import Cubical.Data.Empty
 open import Cubical.Data.Nat
 open import Cubical.Data.Empty renaming (elim to ⊥-elim)
 
@@ -60,7 +60,7 @@ cong₃ f p q r i = f (p i) (q i) (r i)
 module TermSyntax {𝓁} (M : PartialMagma {𝓁}) where
   open PartialMagmaStr (snd M)
   open IsPartialMagma isPartialMagma using (↓-isProp ; carrier-isSet)
-  data ClosedTerm : Set 𝓁 where
+  data ClosedTerm : Type 𝓁 where
     ⟦_⟧ : fst M → ClosedTerm
     _⊙_ : ClosedTerm → ClosedTerm → ClosedTerm
 
@@ -88,7 +88,7 @@ module TermSyntax {𝓁} (M : PartialMagma {𝓁}) where
     ⟩
       _⋅_ t′ u′ {{transport cong-↓ t⋅u↓}}
     ≡⟨ cong (λ z → _⋅_ t′ u′ {{z}}) (↓-isProp _ _)  ⟩
-      _⋅_ t′ u′ {{t′⋅u′↓}}
+      _⋅_ t′ u′ ⦃ t′⋅u′↓ ⦄
     ∎
     where
       cong-↓ = cong₂ _⋅_↓ (⇓-injʳ x⇓t x⇓t′) (⇓-injʳ y⇓u y⇓u′)
@@ -102,30 +102,85 @@ module TermSyntax {𝓁} (M : PartialMagma {𝓁}) where
 
     ⇓-isProp-aux₀
       : ∀ {x t u} → (p : x ⇓ t) → (q : x ⇓ u)
-      → transport (λ i → x ⇓ ⇓-injʳ p q i) p ≡ q
+      → transport (cong (x ⇓_) (⇓-injʳ p q)) p ≡ q
     ⇓-isProp-aux₀ {.(⟦ t ⟧)} {t} {.t} (⟦⟧⇓ {t}) (⟦⟧⇓ {t}) =
         transport (λ i → ⟦ t ⟧ ⇓ ⇓-injʳ (⟦⟧⇓ {t}) (⟦⟧⇓ {t}) i) (⟦⟧⇓ {t})
       ≡⟨ cong 
-          (λ pf → transport (λ i → ⟦ t ⟧ ⇓ pf i) (⟦⟧⇓ {t})) 
+          (λ pf → transport (cong (⟦ t ⟧ ⇓_) pf) (⟦⟧⇓ {t})) 
           (⇓-isProp-aux-prop (⟦⟧⇓ {t}) (⟦⟧⇓ {t}))
         ⟩
         transport refl (⟦⟧⇓ {t})
       ≡⟨ transportRefl ⟦⟧⇓ ⟩
         ⟦⟧⇓ {t}
       ∎
-    ⇓-isProp-aux₀ {(t ⊙ u)} {.(_ ⋅ _)} {.(_ ⋅ _)} 
-      (⊙⇓ t⇓l u⇓r ⦃ l⋅r↓ ⦄) (⊙⇓ t⇓l′ u⇓r′ ⦃ l′⋅r′↓ ⦄) =
-            transport (λ i → (t ⊙ u) ⇓ ⇓-injʳ p q i)
-              (⊙⇓ t⇓l u⇓r ⦃ l⋅r↓ ⦄)
-        ≡⟨ {!   !} ⟩
+    ⇓-isProp-aux₀ {(t ⊙ u)} {.(l ⋅ r)} {.(_ ⋅ _)} 
+      (⊙⇓ {t} {u} {l} {r} t⇓l u⇓r ⦃ l⋅r↓ ⦄)
+      (⊙⇓ {t} {u} {l′} {r′} t⇓l′ u⇓r′ ⦃ l′⋅r′↓ ⦄) =
+          transport 
+            (cong ((t ⊙ u) ⇓_) (⇓-injʳ p q))
+            p
+        ≡⟨ cong₃
+            (λ _ x y →  
+              transport 
+                  (cong (t ⊙ u ⇓_) (⇓-injʳ ((⊙⇓ x  u⇓r ⦃ y ⦄)) q))  
+                  (⊙⇓ x  u⇓r ⦃ y ⦄)
+            ) 
+            l≡l′ (transport-filler (cong (t ⇓_) l≡l′) t⇓l) 
+                (transport-filler (cong (_⋅ r ↓) l≡l′) l⋅r↓)
+          ⟩
+          transport 
+            (cong ((t ⊙ u) ⇓_) (⇓-injʳ pl′ q))
+            pl′
+        ≡⟨ cong₃
+              (λ _ x₁ y →
+                transport (cong ((t ⊙ u) ⇓_) (⇓-injʳ (⊙⇓ t⇓trans-l x₁ ⦃ y ⦄) q))
+                (⊙⇓ t⇓trans-l x₁ ⦃ y ⦄))
+                r≡r′
+                (transport-filler (cong (u ⇓_) r≡r′) u⇓r)
+                (transport-filler (cong (l′ ⋅_↓) r≡r′) trans-l⋅r↓)
+          ⟩
+        transport 
+            (cong ((t ⊙ u) ⇓_) (⇓-injʳ ptrans q))
+            ptrans
+        ≡⟨ cong₃
+            (λ x y z → transport 
+                (cong ((t ⊙ u) ⇓_) (⇓-injʳ (⊙⇓ x y ⦃ z ⦄) q))
+                (⊙⇓ x y ⦃ z ⦄)
+            ) 
+            (t⇓l≡t⇓l′)
+            (u⇓r≡u⇓r′)
+            (↓-isProp _ l′⋅r′↓)
+          ⟩
+          transport (cong (t ⊙ u ⇓_) (⇓-injʳ q q))
+            (⊙⇓ t⇓l′ u⇓r′ ⦃ l′⋅r′↓ ⦄)
+        ≡⟨ cong (λ pf → transport (cong ((t ⊙ u) ⇓_) pf) q) 
+            (carrier-isSet (l′ ⋅ r′) (l′ ⋅ r′) (⇓-injʳ q q) refl)
+          ⟩
+          transport (cong (t ⊙ u ⇓_) refl)
+            (⊙⇓ t⇓l′ u⇓r′ ⦃ l′⋅r′↓ ⦄)
+        ≡⟨ transportRefl _ ⟩
             ⊙⇓ t⇓l′ u⇓r′ ⦃ l′⋅r′↓ ⦄
         ∎
         where
           -- transf t⇓ u⇓ ↓ = ⊙⇓ t⇓ u⇓ ⦃ ↓ ⦄
+          x = t ⊙ u
+          l≡l′ = ⇓-injʳ t⇓l t⇓l′
+          r≡r′ = ⇓-injʳ u⇓r u⇓r′
           p = ⊙⇓ t⇓l u⇓r ⦃ l⋅r↓ ⦄
           q = ⊙⇓ t⇓l′ u⇓r′ ⦃ l′⋅r′↓ ⦄
+          l⋅r≡l′⋅r′ = ⇓-injʳ p q
+          l⋅r↓≡l′⋅r′↓ = cong₂ _⋅_↓ l≡l′ r≡r′
+          p′ = ⊙⇓ t⇓l′ u⇓r′ ⦃ transport l⋅r↓≡l′⋅r′↓ l⋅r↓ ⦄
           t⇓l≡t⇓l′ = ⇓-isProp-aux₀ t⇓l t⇓l′
-          t⇓r≡t⇓r′ = ⇓-isProp-aux₀ u⇓r u⇓r′
+          u⇓r≡u⇓r′ = ⇓-isProp-aux₀ u⇓r u⇓r′
+          t⇓trans-l = transport (cong (t ⇓_) l≡l′) t⇓l
+          trans-l⋅r↓ = transport (cong (_⋅ r ↓) l≡l′) l⋅r↓
+          pl′ = ⊙⇓ t⇓trans-l u⇓r 
+                  ⦃ trans-l⋅r↓ ⦄
+          ptrans = ⊙⇓ 
+            (transport (cong (t ⇓_) l≡l′) t⇓l) 
+            (transport (cong (u ⇓_) r≡r′) u⇓r)
+            ⦃ transport (cong (l′ ⋅_↓) r≡r′) trans-l⋅r↓ ⦄
     
   ⇓-isProp₂
     : ∀ {x t} → (p : x ⇓ t) → (q : x ⇓ t)
@@ -153,10 +208,26 @@ module TermSyntax {𝓁} (M : PartialMagma {𝓁}) where
       t≡u = ⇓-injʳ x⇓t x⇓u
       x⇓t≡u = cong (x ⇓_) t≡u
 
+  _≃_ : ClosedTerm → ClosedTerm → Type 𝓁
+  l ≃ r =
+    (∀ {x} → l ⇓ x → r ⇓ x) 
+      ×
+    (∀ {x} → r ⇓ x → l ⇓ x)
+
+  infix 6 _≃_
+
+  ≃-¬l⇓⇒¬r⇓ : ∀{l r} → l ≃ r → ¬ (l ⇓) → ¬ (r ⇓)
+  ≃-¬l⇓⇒¬r⇓ (_ , r⇓⇒l⇓) ¬l⇓ (x , r⇓x) = ¬l⇓ (x , r⇓⇒l⇓ r⇓x)
+
+  ≃-¬r⇓⇒¬l⇓ : ∀{l r} → l ≃ r → ¬ (r ⇓) → ¬ (l ⇓)
+  ≃-¬r⇓⇒¬l⇓ (l⇓⇒r⇓ , _) ¬r⇓ (x , l⇓x) = ¬r⇓ (x , l⇓⇒r⇓ l⇓x)
+
 record IsPCA {A : Type 𝓁} (_⋅_↓ : A → A → Type 𝓁) (_⋅_ : (x y : A) → {{_ : x ⋅ y ↓}} → A) (k : A) (s : A) : Type 𝓁 where
   constructor ispca
   field
     isPartialMagma : IsPartialMagma _⋅_↓ _⋅_
+
+  open TermSyntax (partialmagma A _⋅_↓ _⋅_ isPartialMagma)
 
   field
     {{k-total₁}} : ∀ {a} → k ⋅ a ↓
@@ -164,25 +235,9 @@ record IsPCA {A : Type 𝓁} (_⋅_↓ : A → A → Type 𝓁) (_⋅_ : (x y : 
     k-const : ∀ {a b} → (k ⋅ a) ⋅ b ≡ a
     {{s-total₁}} : ∀ {f} → s ⋅ f ↓
     {{s-total₂}} : ∀ {f g} → (s ⋅ f) ⋅ g ↓
-    s-forward : ∀ {f g x} → {{_ : ((s ⋅ f) ⋅ g) ⋅ x ↓ }} → 
-      Σ ((f ⋅ x ↓) × (g ⋅ x ↓)) 
-          λ { (fx↓ , gx↓) →
-                  (λ {{_ : f ⋅ x ↓}} {{_ : g ⋅ x ↓}}
-                    → Σ ((f ⋅ x) ⋅ (g ⋅ x) ↓)
-                      (λ fx[gx]↓ → 
-                        (λ {{_ : (f ⋅ x) ⋅ (g ⋅ x) ↓}} → 
-                          ((s ⋅ f) ⋅ g) ⋅ x  ≡  (f ⋅ x) ⋅ (g ⋅ x)
-                        ) {{fx[gx]↓}}
-                      )
-                  )
-                {{fx↓}} {{gx↓}}
-            } 
-    s-backward : ∀ {f g x} {{_ : f ⋅ x ↓}} {{_ : g ⋅ x ↓}} 
-      {{_ : (f ⋅ x) ⋅ (g ⋅ x) ↓}} → 
-      Σ (((s ⋅ f) ⋅ g) ⋅ x ↓)
-        λ sfgx↓ →
-          (λ {{_ : ((s ⋅ f) ⋅ g) ⋅ x ↓}} → ((s ⋅ f) ⋅ g) ⋅ x ≡ (f ⋅ x) ⋅ (g ⋅ x))
-          {{sfgx↓}}
+    s-equivalent : ∀ {f g x} → 
+      ⟦ s ⟧ ⊙ ⟦ f ⟧ ⊙ ⟦ g ⟧ ⊙ ⟦ x ⟧ ≃
+        ⟦ f ⟧ ⊙ ⟦ x ⟧ ⊙ (⟦ g ⟧ ⊙ ⟦ x ⟧)
 {-
 
 record PCAStr (A : Type 𝓁) : Type (𝓁-suc 𝓁) where
