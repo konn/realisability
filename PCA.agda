@@ -2,6 +2,7 @@
 module PCA where
 open import Level renaming (suc to 𝓁-suc ; _⊔_ to _⊔𝓁_)
 open import Cubical.Foundations.Prelude
+open import Cubical.Foundations.Function
 open import Cubical.Foundations.HLevels
 open import Cubical.Data.Maybe
 open import Cubical.Data.Maybe.Properties
@@ -12,11 +13,14 @@ open import Cubical.Data.Sum
 open import Cubical.Data.Prod
 open import Cubical.Data.Empty
 open import Cubical.Data.Nat
+open import Cubical.Relation.Binary
 open import Cubical.Data.Empty renaming (elim to ⊥-elim)
+open BinaryRelation
 
 private
   variable
     𝓁 : Level
+    𝓁′ : Level
     c : Level
 
 record IsPartialMagma {A : Type 𝓁} (_⋅_↓ : A → A → Set c)  (_⋅_ : ∀ (x y : A) → {{_ : x ⋅ y ↓ }} → A) : Type (c ⊔𝓁 𝓁) where
@@ -59,7 +63,7 @@ cong₃ f p q r i = f (p i) (q i) (r i)
 
 module TermSyntax {𝓁} (M : PartialMagma {𝓁}) where
   open PartialMagmaStr (snd M)
-  open IsPartialMagma isPartialMagma using (↓-isProp ; carrier-isSet)
+  open IsPartialMagma isPartialMagma using (↓-isProp ; carrier-isSet) public
   data ClosedTerm : Type 𝓁 where
     ⟦_⟧ : fst M → ClosedTerm
     _⊙_ : ClosedTerm → ClosedTerm → ClosedTerm
@@ -188,7 +192,6 @@ module TermSyntax {𝓁} (M : PartialMagma {𝓁}) where
       q
     ∎
       
-
   ⇓-isProp₁ : ∀{x} → isProp (x ⇓)
   ⇓-isProp₁ {x} (t , x⇓t) (u , x⇓u) =
       (t , x⇓t)
@@ -201,6 +204,14 @@ module TermSyntax {𝓁} (M : PartialMagma {𝓁}) where
       t≡u = ⇓-injʳ x⇓t x⇓u
       x⇓t≡u = cong (x ⇓_) t≡u
 
+  ⟦x⟧⊙⟦y⟧⇓⇒x⋅y↓ : ∀ {x y z} →  ⟦ x ⟧ ⊙ ⟦ y ⟧ ⇓ z → x ⋅ y ↓
+  ⟦x⟧⊙⟦y⟧⇓⇒x⋅y↓ {x} {y} 
+    (⊙⇓ {.(⟦ _ ⟧)} {.(⟦ _ ⟧)} ⟦⟧⇓ ⟦⟧⇓ ⦃ pf ⦄) = pf
+
+  ⟦x⟧⊙⟦y⟧⇓z⇒x⋅y≡z : ∀ {x y z} →  (pf : ⟦ x ⟧ ⊙ ⟦ y ⟧ ⇓ z) → _⋅_ x y ⦃ ⟦x⟧⊙⟦y⟧⇓⇒x⋅y↓ pf ⦄ ≡ z
+  ⟦x⟧⊙⟦y⟧⇓z⇒x⋅y≡z {x} {y} (⊙⇓ ⟦⟧⇓ ⟦⟧⇓) = refl
+
+  -- | Strong equivalence
   _≃_ : ClosedTerm → ClosedTerm → Type 𝓁
   l ≃ r =
     (∀ {x} → l ⇓ x → r ⇓ x) 
@@ -214,6 +225,25 @@ module TermSyntax {𝓁} (M : PartialMagma {𝓁}) where
 
   ≃-¬r⇓⇒¬l⇓ : ∀{l r} → l ≃ r → ¬ (r ⇓) → ¬ (l ⇓)
   ≃-¬r⇓⇒¬l⇓ (l⇓⇒r⇓ , _) ¬r⇓ (x , l⇓x) = ¬r⇓ (x , l⇓⇒r⇓ l⇓x)
+
+  private
+    isProp, : ∀{A : Type 𝓁} {B : Type 𝓁′} → isProp A → isProp B → isProp (A × B)
+    isProp, {A} {B} isPropA isPropB (x , x₁) (x₂ , x₃) =
+      cong₂ _,_ (isPropA x x₂) (isPropB x₁ x₃)
+
+    ⇓⇒-isProp : ∀ {l r} → isProp (∀{x} → l ⇓ x → r ⇓ x)
+    ⇓⇒-isProp {l} {r} f g = λ i →  
+      λ {x} l⇓x → ⇓-isProp₂ (f l⇓x) (g l⇓x) i
+
+  ≃-isProp : ∀{x y} → isProp (x ≃ y)
+  ≃-isProp {x} {y} = 
+    isProp, ⇓⇒-isProp ⇓⇒-isProp
+
+  ≃-isEquivRel : isEquivRel _≃_
+  ≃-isEquivRel = EquivRel 
+    (λ a → (λ x → x) , (λ z → z))
+    (λ { a b (x , x₁) → x₁ , x }) 
+    λ { a b c (a⇒b , b⇒a) (b⇒c , c⇒b) → ((λ x → (b⇒c (a⇒b x))) , λ z → b⇒a (c⇒b z))}
 
 record IsPCA {A : Type 𝓁} (_⋅_↓ : A → A → Type 𝓁) (_⋅_ : (x y : A) → {{_ : x ⋅ y ↓}} → A) (k : A) (s : A) : Type 𝓁 where
   constructor ispca
@@ -229,59 +259,62 @@ record IsPCA {A : Type 𝓁} (_⋅_↓ : A → A → Type 𝓁) (_⋅_ : (x y : 
     {{s-total₁}} : ∀ {f} → s ⋅ f ↓
     {{s-total₂}} : ∀ {f g} → (s ⋅ f) ⋅ g ↓
     s-equivalent : ∀ {f g x} → 
-      ⟦ s ⟧ ⊙ ⟦ f ⟧ ⊙ ⟦ g ⟧ ⊙ ⟦ x ⟧ ≃
+      ⟦ ((s ⋅ f) ⋅ g) ⟧ ⊙ ⟦ x ⟧ ≃
         ⟦ f ⟧ ⊙ ⟦ x ⟧ ⊙ (⟦ g ⟧ ⊙ ⟦ x ⟧)
-{-
 
 record PCAStr (A : Type 𝓁) : Type (𝓁-suc 𝓁) where
   constructor pcastr
   field
-    _⋅?_ : A → A → Maybe A
+    _⋅_↓ : A → A → Type 𝓁
+    _⋅_ : (x : A) → (y : A) → ⦃ _ : x ⋅ y ↓ ⦄ → A
     k : A
     s : A
-    isPCA : IsPCA _⋅?_ k s
+    isPCA : IsPCA _⋅_↓ _⋅_ k s
+
+  infix 7 _⋅_↓
+  infixl 7 _⋅_
 
   open IsPCA isPCA public
-  open PartialMagmaStr (partialmagmastr _⋅?_ isPartialMagma)
-    hiding (isPartialMagma ; _⋅?_)
+  open PartialMagmaStr (partialmagmastr _⋅_↓ _⋅_ isPartialMagma)
+    hiding (isPartialMagma ; _⋅_ ; _⋅_↓)
     public
+  open TermSyntax (partialmagma A _⋅_↓ _⋅_ isPartialMagma)
   
   i : A
   i = s ⋅ k ⋅ k
 
-  i-⋅?-identityˡ : ∀ {x} → i ⋅? x ≡ just x
-  i-⋅?-identityˡ {x} =
-        i ⋅? x 
-      ≡⟨ refl ⟩
-        (s ⋅ k ⋅ k) ⋅? x
-      ≡⟨ s-starling {k} {k} {x} ⟩
-        (k ⋅? x) ⊙ (k ⋅? x)
-      ≡⟨ cong₂ _⊙_ just-⋅-comm just-⋅-comm ⟩
-        just (k ⋅ x) ⊙ just (k ⋅ x)
-      ≡⟨ refl ⟩
-        (k ⋅ x) ⋅? (k ⋅ x)
+  ⟦s⟧ = ⟦ s ⟧
+  ⟦k⟧ = ⟦ k ⟧
+
+  i-total : ∀ {x} → i ⋅ x ↓
+  i-total = ⟦x⟧⊙⟦y⟧⇓⇒x⋅y↓ pf
+    where
+      pf = 
+        proj₂ s-equivalent (⊙⇓ (⊙⇓ ⟦⟧⇓ ⟦⟧⇓) (⊙⇓ ⟦⟧⇓ ⟦⟧⇓))
+
+
+  i-⋅-identityˡ : ∀ {x d} → _⋅_ i x ⦃ d ⦄ ≡ x
+  i-⋅-identityˡ {x} {d} = 
+        _⋅_ i x ⦃ d ⦄
+      ≡⟨ cong (λ dict → _⋅_ i x ⦃ dict ⦄) (↓-isProp d _) ⟩
+        _⋅_ i x ⦃ ⟦x⟧⊙⟦y⟧⇓⇒x⋅y↓ pf ⦄
+      ≡⟨ ⟦x⟧⊙⟦y⟧⇓z⇒x⋅y≡z pf ⟩
+        (k ⋅ x) ⋅ (k ⋅ x)
       ≡⟨ k-const ⟩
-        just x
+        x
       ∎
+    where
+      pf = 
+        proj₂ (s-equivalent {k} {k} {x}) (⊙⇓ (⊙⇓ ⟦⟧⇓ ⟦⟧⇓) (⊙⇓ ⟦⟧⇓ ⟦⟧⇓))
 
-  i-total-inhabited : ∀ {x} → i ⋅ x ↓ ≡ Unit
-  i-total-inhabited {x} =
-    i ⋅ x ↓ ≡⟨ refl ⟩ is-just (i ⋅? x) ≡⟨ cong is-just i-⋅?-identityˡ ⟩ Unit ∎
-
-  instance    
-    i-total : ∀ {x} → i ⋅ x ↓
-    i-total {x} = 
-      transport (sym (i-total-inhabited {x})) tt
-
-  i-identityˡ : ∀ {x} → i ⋅ x ≡ x
-  i-identityˡ {x} = ⋅?-to-⋅ i-⋅?-identityˡ
 
 PCA : Type (𝓁-suc 𝓁)
 PCA = TypeWithStr _ PCAStr
 
-pca : (A : Type 𝓁) (_⋅?_ : A → A → Maybe A) (k s : A) (h : IsPCA _⋅?_ k s) → PCA
-pca A _⋅?_ k s h = A , pcastr _⋅?_ k s h
+pca : (A : Type 𝓁) (_⋅_↓ : A → A → Type 𝓁) (_⋅_ : _) (k s : A) (h : IsPCA _⋅_↓ _⋅_ k s) → PCA
+pca A _⋅_↓ _⋅_ k s h = A , pcastr _⋅_↓ _⋅_ k s h
 
+{-
 data NatType : Set where
   Nat : NatType
   Fn : NatType → NatType -> NatType
